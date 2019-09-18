@@ -1,7 +1,7 @@
 use crate::error::ClientError;
 use crate::proto::health::HealthInfo;
 use crate::proto::lease::LeaseStatus;
-use futures::Future;
+use futures::TryFuture;
 
 // // Lifecycle
 // //
@@ -23,7 +23,9 @@ use futures::Future;
 // [doc] https://www.vaultproject.io/api/system/health.html
 //
 pub trait HealthService {
-    type HealthFuture: Future<Item = HealthInfo, Error = ClientError>;
+    //
+    //
+    type HealthFuture: TryFuture<Ok = HealthInfo, Error = ClientError> + 'static;
 
     //
     // request : GET (version)/sys/health
@@ -32,7 +34,9 @@ pub trait HealthService {
 }
 
 pub trait LeaseService {
-    type LeaseInfoFuture: Future<Item = LeaseStatus, Error = ClientError>;
+    //
+    //
+    type LeaseInfoFuture: TryFuture<Ok = LeaseStatus, Error = ClientError> + 'static;
 
     fn read_lease(&self, id: String) -> Self::LeaseInfoFuture;
 }

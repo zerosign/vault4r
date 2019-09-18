@@ -8,13 +8,19 @@ pub enum LeaseStatus {
     Static(Status),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Status {
     id: String,
     issue_time: usize,
     expire_time: usize,
     last_renewal_time: Option<usize>,
     ttl: usize,
+}
+
+impl Default for LeaseStatus {
+    fn default() -> Self {
+        LeaseStatus::Static(Status::default())
+    }
 }
 
 pub trait LeaseEndpoint {

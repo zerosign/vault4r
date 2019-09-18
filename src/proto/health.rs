@@ -3,7 +3,7 @@ use http::Request;
 use hyper::Body;
 use serde::Deserialize;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Default)]
 pub struct HealthInfo {
     initialized: bool,
     sealed: bool,

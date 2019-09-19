@@ -19,3 +19,4 @@ http = "0.1.18"
 # futures-util = "0.2.1"
 futures-preview = { version = "=0.3.0-alpha.18", default-features = false, features = ["compat"] }
 futures-util-preview = { version = "=0.3.0-alpha.18", default-features = false, features = ["sink"] }
+lazy_static = "1.4.0"

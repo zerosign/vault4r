@@ -17,10 +17,23 @@ services:
       - etcd0
       - etcd1
       - etcd2
+  vault-operator:
+    image: 'zerosign/vault-operator:latest'
+    volumes:
+      - .docker/volumes/vault/secrets:/secrets:rw
+      - .docker/volumes/vault/secrets:/policies:rw
+    env_file:
+      - .docker/volumes/vault/config.env
+    depends_on:
+      - vault-etcd
+    command:
+      - /usr/bin/vault-operator
+      - auto-init
+      - http://vault-etcd:8200
   etcd0:
     image: 'quay.io/coreos/etcd'
     ports:
-      - 2379
+      - "127.0.0.1:3001:2379"
     volumes:
       - etcd0:/var/etcd/data
     command:
@@ -39,10 +52,14 @@ services:
       - http://0.0.0.0:2380
       - -initial-cluster
       - etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
+      - --heartbeat-interval
+      - "250"
+      - --election-timeout
+      - "1250"
   etcd1:
     image: 'quay.io/coreos/etcd'
     ports:
-      - 2379
+      - "127.0.0.1:3002:2379"
     volumes:
       - etcd1:/var/etcd/data
     command:
@@ -61,10 +78,14 @@ services:
       - http://0.0.0.0:2380
       - -initial-cluster
       - etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
+      - --heartbeat-interval
+      - "250"
+      - --election-timeout
+      - "1250"
   etcd2:
     image: 'quay.io/coreos/etcd'
     ports:
-      - 2379
+      - "127.0.0.1:3003:2379"
     volumes:
       - etcd2:/var/etcd/data
     command:
@@ -83,6 +104,10 @@ services:
       - http://0.0.0.0:2380
       - -initial-cluster
       - etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
+      - --heartbeat-interval
+      - "250"
+      - --election-timeout
+      - "1250"
 volumes:
   etcd0:
   etcd1:

@@ -1,4 +1,4 @@
-#[derive(Denig,]
+#[derive(Debug)]
 pub struct AuthInfo {
     r#type: String,
     description: String,

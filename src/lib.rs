@@ -2,6 +2,7 @@
 
 extern crate futures;
 extern crate http;
+extern crate lazy_static;
 // extern crate hyper_rustls;
 extern crate futures_util;
 extern crate serde;

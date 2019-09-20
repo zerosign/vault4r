@@ -1,6 +1,6 @@
 use hyper::{client, Body};
 
-use futures::{self, TryFuture};
+use futures::{self, future, TryFuture};
 use futures_util::{FutureExt, TryFutureExt, TryStreamExt};
 
 use crate::error::ClientError;
@@ -51,11 +51,14 @@ where
     C: Connect + 'static,
 {
     type LeaseInfoFuture = impl TryFuture<Ok = LeaseStatus, Error = ClientError>;
+    type ListLeaseFuture = impl TryFuture<Ok = Vec<String>, Error = ClientError>;
+    type RevokedLeaseFuture = impl TryFuture<Ok = (), Error = ClientError>;
+    type RevokedPrefixFuture = impl TryFuture<Ok = (), Error = ClientError>;
 
-    fn read_lease(&self, id: String) -> Self::LeaseInfoFuture {
+    fn read_lease(&self, id: &str) -> Self::LeaseInfoFuture {
         let executor = self.inner.clone();
 
-        futures::future::ready(
+        future::ready(
             self.protocol
                 .read_lease(id)
                 .map_err(ClientError::ProtoError),
@@ -66,6 +69,58 @@ where
             Ok(chunks) => {
                 serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
             }
+            Err(e) => Err(e),
+        })
+    }
+
+    fn list_lease(&self, prefix: Option<&str>) -> Self::ListLeaseFuture {
+        let executor = self.inner.clone();
+
+        future::ready(
+            self.protocol
+                .list_lease(prefix)
+                .map_err(ClientError::ProtoError),
+        )
+        .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+        .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+        .map(|r| match r {
+            Ok(chunks) => {
+                serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
+            }
+            Err(e) => Err(e),
+        })
+    }
+
+    #[inline]
+    fn revoke_lease(&self, id: &str) -> Self::RevokedLeaseFuture {
+        let executor = self.inner.clone();
+
+        future::ready(
+            self.protocol
+                .revoke_lease(id)
+                .map_err(ClientError::ProtoError),
+        )
+        .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+        .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+        .map(|r| match r {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        })
+    }
+
+    #[inline]
+    fn revoke_prefix(&self, prefix: &str, forced: bool) -> Self::RevokedPrefixFuture {
+        let executor = self.inner.clone();
+
+        future::ready(
+            self.protocol
+                .revoke_prefix(prefix, forced)
+                .map_err(ClientError::ProtoError),
+        )
+        .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+        .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+        .map(|r| match r {
+            Ok(_) => Ok(()),
             Err(e) => Err(e),
         })
     }

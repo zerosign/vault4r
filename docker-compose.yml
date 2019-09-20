@@ -3,7 +3,7 @@ services:
   vault-etcd:
     image: 'vault:latest'
     ports:
-      - "8200:8200"
+      - "127.0.0.1:8200:8200"
     volumes:
       - .docker/volumes/vault-etcd/file:/vault/file:rw
       - .docker/volumes/vault-etcd/config:/vault/config:rw
@@ -21,15 +21,12 @@ services:
     image: 'zerosign/vault-operator:latest'
     volumes:
       - .docker/volumes/vault/secrets:/secrets:rw
-      - .docker/volumes/vault/secrets:/policies:rw
+      - .docker/volumes/vault/policies:/policies:rw
     env_file:
       - .docker/volumes/vault/config.env
     depends_on:
       - vault-etcd
-    command:
-      - /usr/bin/vault-operator
-      - auto-init
-      - http://vault-etcd:8200
+    command: ["/usr/bin/vault-operator", "auto-init", "http://vault-etcd:8200"]
   etcd0:
     image: 'quay.io/coreos/etcd'
     ports:

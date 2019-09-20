@@ -37,6 +37,15 @@ pub trait LeaseService {
     //
     //
     type LeaseInfoFuture: TryFuture<Ok = LeaseStatus, Error = ClientError> + 'static;
+    type ListLeaseFuture: TryFuture<Ok = Vec<String>, Error = ClientError> + 'static;
+    type RevokedLeaseFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
+    type RevokedPrefixFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
 
-    fn read_lease(&self, id: String) -> Self::LeaseInfoFuture;
+    fn read_lease(&self, id: &str) -> Self::LeaseInfoFuture;
+
+    fn list_lease(&self, prefix: Option<&str>) -> Self::ListLeaseFuture;
+
+    fn revoke_lease(&self, id: &str) -> Self::RevokedLeaseFuture;
+
+    fn revoke_prefix(&self, prefix: &str, forced: bool) -> Self::RevokedPrefixFuture;
 }

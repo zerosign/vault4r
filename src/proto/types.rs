@@ -1,4 +1,6 @@
-use crate::proto::{error::Error, health::HealthEndpoint, lease::LeaseEndpoint};
+use crate::proto::{
+    error::Error, health::HealthEndpoint, lease::LeaseEndpoint, namespace::NamespaceEndpoint,
+};
 use http::{
     method::Method,
     uri::{Authority, Scheme, Uri},
@@ -136,6 +138,70 @@ impl LeaseEndpoint for Protocol {
 
         Request::builder()
             .method(Method::PUT)
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+}
+
+impl NamespaceEndpoint for Protocol {
+    fn list_namespace(&self) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(format!("{}{}", self.version, Self::NAMESPACE_ENDPOINT).as_str())
+            .build()?;
+
+        Request::builder()
+            .method("LIST")
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+
+    fn create_namespace(&self, path: &str) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(
+                format!("{}{}/{}", self.version, Self::NAMESPACE_ENDPOINT, path).as_str(),
+            )
+            .build()?;
+
+        Request::builder()
+            .method(Method::POST)
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+
+    fn delete_namespace(&self, path: &str) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(
+                format!("{}{}/{}", self.version, Self::NAMESPACE_ENDPOINT, path).as_str(),
+            )
+            .build()?;
+
+        Request::builder()
+            .method(Method::DELETE)
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+
+    fn show_namespace(&self, path: &str) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(
+                format!("{}{}/{}", self.version, Self::NAMESPACE_ENDPOINT, path).as_str(),
+            )
+            .build()?;
+
+        Request::builder()
+            .method(Method::GET)
             .uri(uri)
             .body(Body::empty())
             .map_err(Error::HttpError)

@@ -1,6 +1,7 @@
 use crate::error::ClientError;
 use crate::proto::health::HealthInfo;
 use crate::proto::lease::LeaseStatus;
+use crate::proto::namespace::Namespace;
 use futures::TryFuture;
 
 // // Lifecycle
@@ -48,4 +49,21 @@ pub trait LeaseService {
     fn revoke_lease(&self, id: &str) -> Self::RevokedLeaseFuture;
 
     fn revoke_prefix(&self, prefix: &str, forced: bool) -> Self::RevokedPrefixFuture;
+}
+
+pub trait NamespaceService {
+    //
+    //
+    type ListNamespaceFuture: TryFuture<Ok = Vec<String>, Error = ClientError> + 'static;
+    type ShowNamespaceFuture: TryFuture<Ok = Namespace, Error = ClientError> + 'static;
+    type CreateNamespaceFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
+    type DeleteNamespaceFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
+
+    fn list_namespace(&self) -> Self::ListNamespaceFuture;
+
+    fn create_namespace(&self, path: &str) -> Self::CreateNamespaceFuture;
+
+    fn delete_namespace(&self, path: &str) -> Self::DeleteNamespaceFuture;
+
+    fn show_namespace(&self, path: &str) -> Self::ShowNamespaceFuture;
 }

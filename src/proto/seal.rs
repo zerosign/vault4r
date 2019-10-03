@@ -1,8 +1,12 @@
+use serde::de::Deserialize;
+
+#[derive(Debug, Deserialize)]
 pub struct ClusterInfo {
     id: String,
     name: String,
 }
 
+#[derive(Debug, Deserialize)]
 pub struct SealInfo {
     r#type: String,
     threshold: usize,
@@ -19,6 +23,6 @@ pub enum Status {
     },
     Unsealed {
         info: SealInfo,
-        cluster: ClusterInfo
+        cluster: ClusterInfo,
     },
 }

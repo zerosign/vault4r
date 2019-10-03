@@ -1,7 +1,6 @@
+// use futures::{self, future, TryFuture, TryFutureExt, TryStreamExt};
+use crate::futures::{future, Future, FutureExt, Stream, TryFuture, TryFutureExt, TryStreamExt};
 use hyper::{client, Body};
-
-use futures::{self, future, TryFuture};
-use futures_util::{FutureExt, TryFutureExt, TryStreamExt};
 
 use crate::error::ClientError;
 use crate::proto::{

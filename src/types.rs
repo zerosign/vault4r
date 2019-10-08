@@ -1,6 +1,7 @@
 use crate::error::ClientError;
 use crate::proto::health::HealthInfo;
 use crate::proto::lease::LeaseStatus;
+use crate::proto::mount::{KeyPairs, MountInfo, Visibility};
 use crate::proto::namespace::Namespace;
 use crate::proto::seal::SealStatus;
 use futures::TryFuture;
@@ -80,4 +81,33 @@ pub trait SealService {
         -> Self::UnsealFuture;
 
     fn seal_info(&self) -> Self::SealInfoFuture;
+}
+
+pub trait MountService {
+    type MountFuture: TryFuture<Ok = Vec<MountInfo>, Error = ClientError> + 'static;
+    type UnmountFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
+    type ReadMountFuture: TryFuture<Ok = MountInfo, Error = ClientError> + 'static;
+    type ModifyMountFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
+
+    fn mount(
+        &self,
+        path: String,
+        r#type: String,
+        desc: Option<String>,
+        version: Option<String>,
+        config: Vec<(String, String)>,
+    ) -> Self::MountFuture;
+
+    fn unmount(&self, path: String) -> Self::UnmountFuture;
+
+    fn read_mount(&self, path: String) -> Self::ReadMountFuture;
+
+    fn modify_mount(
+        &self,
+        path: String,
+        lease: (usize, usize),
+        audit: KeyPairs,
+        display: Visibility,
+        whitelist: KeyPairs,
+    ) -> Self::ModifyMountFuture;
 }

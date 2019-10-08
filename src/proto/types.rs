@@ -1,5 +1,9 @@
 use crate::proto::{
-    error::Error, health::HealthEndpoint, lease::LeaseEndpoint, namespace::NamespaceEndpoint,
+    error::Error,
+    health::HealthEndpoint,
+    lease::LeaseEndpoint,
+    mount::{KeyPairs, Mount, MountConfig, MountEndpoint, Visibility},
+    namespace::NamespaceEndpoint,
     seal::SealEndpoint,
 };
 use http::{
@@ -263,6 +267,117 @@ impl SealEndpoint for Protocol {
             .method(Method::GET)
             .uri(uri)
             .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+}
+
+impl MountEndpoint for Protocol {
+    // https://www.vaultproject.io/api/system/mounts.html#list-mounted-secrets-engines
+    fn list_mounts(&self) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(format!("{}{}", self.version, Self::MOUNT_ENDPOINT).as_str())
+            .build()?;
+
+        Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+
+    // https://www.vaultproject.io/api/system/mounts.html#enable-secrets-engine
+    fn mount(
+        &self,
+        path: String,
+        r#type: String,
+        version: Option<String>,
+        config: Vec<(String, String)>,
+        desc: Option<String>,
+    ) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(format!("{}{}/{}", self.version, Self::MOUNT_ENDPOINT, path).as_str())
+            .build()?;
+
+        // TODO: should convert from params to Mount
+        let payload = {
+            let inner = Mount::create(path, r#type, version, config, desc).unwrap();
+            serde_json::to_string(&inner)
+        }
+        .map_err(Error::JsonError)?;
+
+        // .map_err(Error::JsonError)?;
+
+        Request::builder()
+            .method(Method::POST)
+            .uri(uri)
+            .body(Body::from(payload))
+            .map_err(Error::HttpError)
+    }
+
+    // https://www.vaultproject.io/api/system/mounts.html#disable-secrets-engine
+    fn unmount(&self, path: String) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(format!("{}{}/{}", self.version, Self::MOUNT_ENDPOINT, path).as_str())
+            .build()?;
+
+        Request::builder()
+            .method(Method::DELETE)
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+
+    // https://www.vaultproject.io/api/system/mounts.html#read-mount-configuration
+    fn read_mount(&self, path: String) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(
+                format!("{}{}/{}/tune", self.version, Self::MOUNT_ENDPOINT, path).as_str(),
+            )
+            .build()?;
+
+        Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+
+    // https://www.vaultproject.io/api/system/mounts.html#tune-mount-configuration
+    fn modify_mount(
+        &self,
+        path: String,
+        lease: (usize, usize),
+        audit: KeyPairs,
+        display: Visibility,
+        whitelist: KeyPairs,
+    ) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(
+                format!("{}{}/{}/tune", self.version, Self::MOUNT_ENDPOINT, path).as_str(),
+            )
+            .build()?;
+
+        // TODO: don't use unwrap here
+        let payload = {
+            let inner = MountConfig::create(path, lease, audit, display, whitelist).unwrap();
+            serde_json::to_string(&inner)
+        }
+        .map_err(Error::JsonError)?;
+
+        Request::builder()
+            .method(Method::POST)
+            .uri(uri)
+            .body(Body::from(payload))
             .map_err(Error::HttpError)
     }
 }

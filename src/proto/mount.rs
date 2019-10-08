@@ -21,6 +21,20 @@ pub struct MountConfig {
     allowed_response_headers: Vec<String>,
 }
 
+impl MountConfig {
+    #[inline]
+    pub fn create(
+        path: String,
+        lease: (usize, usize),
+        audit: KeyPairs,
+        display: Visibility,
+        whitelist: KeyPairs,
+    ) -> Result<MountConfig, ()> {
+        // TODO: create conversion
+        Err(())
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MountInfo {
     r#type: String,
@@ -43,6 +57,25 @@ pub struct Mount {
     options: HashMap<String, String>,
     version: String,
     additional: Option<Additional>,
+}
+
+impl Mount {
+    #[inline]
+    pub fn create(
+        path: String,
+        r#type: String,
+        version: Option<String>,
+        config: Vec<(String, String)>,
+        desc: Option<String>,
+    ) -> Result<Mount, ()> {
+        // Mount {
+        //     path: path,
+        //     r#type: r#type,
+        //     version: version.unwrap_or("1"),
+        // }
+
+        Err(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,7 +101,7 @@ impl Default for KeyPairs {
 }
 
 pub trait MountEndpoint {
-    const MOUNTS_ENDPOINT: &'static str = "/sys/mounts";
+    const MOUNT_ENDPOINT: &'static str = "/sys/mounts";
 
     // https://www.vaultproject.io/api/system/mounts.html#list-mounted-secrets-engines
     fn list_mounts(&self) -> Result<Request<Body>, Error>;
@@ -78,9 +111,9 @@ pub trait MountEndpoint {
         &self,
         path: String,
         r#type: String,
-        desc: Option<String>,
         version: Option<String>,
         config: Vec<(String, String)>,
+        desc: Option<String>,
     ) -> Result<Request<Body>, Error>;
 
     // https://www.vaultproject.io/api/system/mounts.html#disable-secrets-engine

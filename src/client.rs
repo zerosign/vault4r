@@ -5,11 +5,12 @@ use crate::error::ClientError;
 use crate::proto::{
     health::{HealthEndpoint, HealthInfo},
     lease::{LeaseEndpoint, LeaseStatus},
+    mount::{KeyPairs, MountEndpoint, MountInfo, Visibility},
     namespace::{Namespace, NamespaceEndpoint},
     seal::{SealEndpoint, SealStatus},
     types::Protocol,
 };
-use crate::types::{HealthService, LeaseService, NamespaceService, SealService};
+use crate::types::{HealthService, LeaseService, MountService, NamespaceService, SealService};
 use client::connect::Connect;
 use client::Client as HyperClient;
 
@@ -250,6 +251,90 @@ where
         future::ready(
             self.protocol
                 .unseal(key, reset, migrate)
+                .map_err(ClientError::ProtoError),
+        )
+        .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+        .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+        .map(|r| {
+            r.and_then(move |chunks| {
+                serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
+            })
+        })
+    }
+}
+
+impl<C> MountService for Client<C>
+where
+    C: Connect,
+{
+    type MountFuture = impl TryFuture<Ok = Vec<MountInfo>, Error = ClientError> + 'static;
+    type UnmountFuture = impl TryFuture<Ok = (), Error = ClientError> + 'static;
+    type ReadMountFuture = impl TryFuture<Ok = MountInfo, Error = ClientError> + 'static;
+    type ModifyMountFuture = impl TryFuture<Ok = (), Error = ClientError> + 'static;
+
+    fn mount(
+        &self,
+        path: String,
+        r#type: String,
+        desc: Option<String>,
+        version: Option<String>,
+        config: Vec<(String, String)>,
+    ) -> Self::MountFuture {
+        let executor = self.inner.clone();
+
+        future::ready(
+            self.protocol
+                .mount(path, r#type, version, config, desc)
+                .map_err(ClientError::ProtoError),
+        )
+        .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+        .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+        .map(|r| {
+            r.and_then(move |chunks| {
+                serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
+            })
+        })
+    }
+
+    fn unmount(&self, path: String) -> Self::UnmountFuture {
+        let executor = self.inner.clone();
+
+        future::ready(self.protocol.unmount(path).map_err(ClientError::ProtoError))
+            .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+            .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+            .map(|r| r.map(|_| ()))
+    }
+
+    fn read_mount(&self, path: String) -> Self::ReadMountFuture {
+        let executor = self.inner.clone();
+
+        future::ready(
+            self.protocol
+                .read_mount(path)
+                .map_err(ClientError::ProtoError),
+        )
+        .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+        .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+        .map(|r| {
+            r.and_then(move |chunks| {
+                serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
+            })
+        })
+    }
+
+    fn modify_mount(
+        &self,
+        path: String,
+        lease: (usize, usize),
+        audit: KeyPairs,
+        display: Visibility,
+        whitelist: KeyPairs,
+    ) -> Self::ModifyMountFuture {
+        let executor = self.inner.clone();
+
+        future::ready(
+            self.protocol
+                .modify_mount(path, lease, audit, display, whitelist)
                 .map_err(ClientError::ProtoError),
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))

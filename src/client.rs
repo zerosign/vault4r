@@ -1,4 +1,3 @@
-// use futures::{self, future, TryFuture, TryFutureExt, TryStreamExt};
 use crate::futures::{future, Future, FutureExt, Stream, TryFuture, TryFutureExt, TryStreamExt};
 use hyper::{client, Body};
 
@@ -7,9 +6,10 @@ use crate::proto::{
     health::{HealthEndpoint, HealthInfo},
     lease::{LeaseEndpoint, LeaseStatus},
     namespace::{Namespace, NamespaceEndpoint},
+    seal::{SealEndpoint, SealStatus},
     types::Protocol,
 };
-use crate::types::{HealthService, LeaseService, NamespaceService};
+use crate::types::{HealthService, LeaseService, NamespaceService, SealService};
 use client::connect::Connect;
 use client::Client as HyperClient;
 
@@ -25,6 +25,21 @@ where
     protocol: Protocol,
 }
 
+// impl <C> Client<C> where C: Connect + 'static {
+
+//     #[inline]
+//     pub(crate) fn empty_body<B>(r: http::Response<B>) -> TryFuture<Ok = B, Error = ClientError> {
+//         r.into_body().try_concat().map_err(ClientError::HyperError)
+//     }
+
+//     #[inline]
+//     pub(crate) fn simple_request<B>(&self, r: http::Request<B>) -> TryFuture<Ok = B, Error = ClientError> {
+//         let executor = self.inner.clone();
+
+//         future::ready(r).and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+//     }
+// }
+
 impl<C> HealthService for Client<C>
 where
     C: Connect + 'static,
@@ -38,11 +53,10 @@ where
         futures::future::ready(self.protocol.health().map_err(ClientError::ProtoError))
             .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
             .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-            .map(|r| match r {
-                Ok(chunks) => {
+            .map(|r| {
+                r.and_then(move |chunks| {
                     serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
-                }
-                Err(e) => Err(e),
+                })
             })
     }
 }
@@ -67,11 +81,10 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| match r {
-            Ok(chunks) => {
+        .map(|r| {
+            r.and_then(move |chunks| {
                 serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
-            }
-            Err(e) => Err(e),
+            })
         })
     }
 
@@ -86,11 +99,10 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| match r {
-            Ok(chunks) => {
+        .map(|r| {
+            r.and_then(move |chunks| {
                 serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
-            }
-            Err(e) => Err(e),
+            })
         })
     }
 
@@ -105,10 +117,7 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| match r {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        })
+        .map(|r| r.map(|_| ()))
     }
 
     #[inline]
@@ -122,10 +131,7 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| match r {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        })
+        .map(|r| r.map(|_| ()))
     }
 }
 
@@ -149,11 +155,10 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| match r {
-            Ok(chunks) => {
+        .map(|r| {
+            r.and_then(move |chunks| {
                 serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
-            }
-            Err(e) => Err(e),
+            })
         })
     }
 
@@ -168,10 +173,7 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| match r {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        })
+        .map(|r| r.map(|_| ()))
     }
 
     #[inline]
@@ -185,10 +187,7 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| match r {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        })
+        .map(|r| r.map(|_| ()))
     }
 
     #[inline]
@@ -202,11 +201,63 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| match r {
-            Ok(chunks) => {
+        .map(|r| {
+            r.and_then(move |chunks| {
                 serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
-            }
-            Err(e) => Err(e),
+            })
+        })
+    }
+}
+
+impl<C> SealService for Client<C>
+where
+    C: Connect,
+{
+    type SealFuture = impl TryFuture<Ok = (), Error = ClientError> + 'static;
+    type UnsealFuture = impl TryFuture<Ok = SealStatus, Error = ClientError> + 'static;
+    type SealInfoFuture = impl TryFuture<Ok = SealStatus, Error = ClientError> + 'static;
+
+    fn seal(&self) -> Self::SealFuture {
+        let executor = self.inner.clone();
+
+        future::ready(self.protocol.seal().map_err(ClientError::ProtoError))
+            .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+            .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+            .map(|r| r.map(|_| ()))
+    }
+
+    fn seal_info(&self) -> Self::SealInfoFuture {
+        let executor = self.inner.clone();
+
+        future::ready(self.protocol.seal().map_err(ClientError::ProtoError))
+            .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+            .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+            .map(|r| {
+                r.and_then(move |chunks| {
+                    serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
+                })
+            })
+    }
+
+    fn unseal(
+        &self,
+        key: String,
+        reset: Option<bool>,
+        migrate: Option<bool>,
+    ) -> Self::UnsealFuture {
+        let executor = self.inner.clone();
+
+        future::ready(
+            self.protocol
+                .unseal(key, reset, migrate)
+                .map_err(ClientError::ProtoError),
+        )
+        .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+        .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+        .map(|r| {
+            r.and_then(move |chunks| {
+                serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
+            })
         })
     }
 }

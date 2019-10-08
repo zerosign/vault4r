@@ -1,5 +1,6 @@
 use crate::proto::{
     error::Error, health::HealthEndpoint, lease::LeaseEndpoint, namespace::NamespaceEndpoint,
+    seal::SealEndpoint,
 };
 use http::{
     method::Method,
@@ -198,6 +199,64 @@ impl NamespaceEndpoint for Protocol {
             .path_and_query(
                 format!("{}{}/{}", self.version, Self::NAMESPACE_ENDPOINT, path).as_str(),
             )
+            .build()?;
+
+        Request::builder()
+            .method(Method::GET)
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+}
+
+impl SealEndpoint for Protocol {
+    // https://www.vaultproject.io/api/system/seal.html
+    fn seal(&self) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(format!("{}{}", self.version, Self::SEAL_ENDPOINT).as_str())
+            .build()?;
+
+        Request::builder()
+            .method(Method::PUT)
+            .uri(uri)
+            .body(Body::empty())
+            .map_err(Error::HttpError)
+    }
+
+    // https://www.vaultproject.io/api/system/unseal.html
+    fn unseal(
+        &self,
+        key: String,
+        reset: Option<bool>,
+        migrate: Option<bool>,
+    ) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(format!("{}{}", self.version, Self::UNSEAL_ENDPOINT).as_str())
+            .build()?;
+
+        let payload = {
+            let inner = json!({ "key": key, "reset": reset.unwrap_or(false), "migrate": migrate.unwrap_or(false) });
+            serde_json::to_string(&inner)
+        }
+        .map_err(Error::JsonError)?;
+
+        Request::builder()
+            .method(Method::PUT)
+            .uri(uri)
+            .body(Body::from(payload))
+            .map_err(Error::HttpError)
+    }
+
+    // https://www.vaultproject.io/api/system/seal-status.html
+    fn seal_info(&self) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(format!("{}{}", self.version, Self::SEAL_INFO_ENDPOINT).as_str())
             .build()?;
 
         Request::builder()

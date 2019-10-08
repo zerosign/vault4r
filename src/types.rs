@@ -2,6 +2,7 @@ use crate::error::ClientError;
 use crate::proto::health::HealthInfo;
 use crate::proto::lease::LeaseStatus;
 use crate::proto::namespace::Namespace;
+use crate::proto::seal::SealStatus;
 use futures::TryFuture;
 
 // // Lifecycle
@@ -66,4 +67,17 @@ pub trait NamespaceService {
     fn delete_namespace(&self, path: &str) -> Self::DeleteNamespaceFuture;
 
     fn show_namespace(&self, path: &str) -> Self::ShowNamespaceFuture;
+}
+
+pub trait SealService {
+    type SealFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
+    type UnsealFuture: TryFuture<Ok = SealStatus, Error = ClientError> + 'static;
+    type SealInfoFuture: TryFuture<Ok = SealStatus, Error = ClientError> + 'static;
+
+    fn seal(&self) -> Self::SealFuture;
+
+    fn unseal(&self, key: String, reset: Option<bool>, migrate: Option<bool>)
+        -> Self::UnsealFuture;
+
+    fn seal_info(&self) -> Self::SealInfoFuture;
 }

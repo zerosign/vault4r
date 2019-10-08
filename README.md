@@ -7,3 +7,41 @@ Currently, this library focuses into implementing http api for most of the `/sys
 
 This library heavily uses `type_alias_impl_trait` features in rust. Most of the endpoints are being implemented in
 traits.
+
+Implemented endpoints :
+
+- [x] Health endpoints (`/sys/health`)
+- [x] Lease endpoints (`/sys/leases`)
+- [x] Namespace endpoints (`/sys/namespaces`)
+- [x] Seal/unseal endpoints (`/sys/seal`, `/sys/unseal`, `/sys/seal-status`)
+- [x] Mount endpoints (`/sys/mounts/*`)
+- [ ] Capability endpoints (`/sys/capabilities`, `/sys/capabilities-self`, `/sys/capabilities-accessor`)
+- [ ] Control Group endpoints (`/sys/config/control-group`, `/sys/control-group`)
+- [ ] CORS endpoints
+- [ ] Key endpoints (`/sys/key-status`, `/sys/rekey`, `/sys/rekey-recovery-key`, `/sys/rotate`)
+- [ ] Replication/Cluster endpoints (`/sys/replication/*`, `/sys/leader`, `/sys/step-down`, `/sys/storage`)
+- [ ] Policy endpoints (`/sys/policy`, `/sys/policies`)
+- [ ] Plugins endpoints (`/sys/plugins/reload`, `/sys/plugins/catalog`)
+- [ ] Audit endpoints (`/sys/audit`, `/sys/audit-hash`, `/sys/config/auditing`)
+
+
+Implemented secret engines :
+
+- [ ] Cubbyhole
+- [ ] Databases
+  - [ ] Cassandra
+  - [ ] Elasticsearch
+  - [ ] MongoDB
+  - [ ] MySQL/MariaDB
+  - [ ] PostgreSQL
+- [ ] Google Cloud
+- [ ] Google Cloud KMS
+- [ ] AWS
+- [ ] Alicloud
+- [ ] Identity
+- [ ] Kev Value (I & II)
+- [ ] PKI
+- [ ] SSH
+- [ ] TOTP
+- [ ] Transit
+- [ ] RabbitMQ

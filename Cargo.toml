@@ -6,6 +6,10 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# [lib]
+# name = "vault4r"
+# crate_type = ["rlib", "staticlib"]
+
 [dependencies]
 serde_json = "1.0.40"
 serde = { version = "1.0.101", features = ["derive"] }
@@ -20,3 +24,4 @@ http = "0.1.18"
 futures-preview = { version = "=0.3.0-alpha.19", default-features = false, features = ["compat"] }
 # futures-util-preview = { git = "https://github.com/rust-lang-nursery/futures-rs", default-features = false, features = ["sink"] }
 lazy_static = "1.4.0"
+derive_builder = "0.8.0"

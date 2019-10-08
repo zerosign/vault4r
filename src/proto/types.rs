@@ -380,4 +380,28 @@ impl MountEndpoint for Protocol {
             .body(Body::from(payload))
             .map_err(Error::HttpError)
     }
+
+    // https://www.vaultproject.io/api/system/remount.html
+    fn remount(&self, from: String, to: String) -> Result<Request<Body>, Error> {
+        let uri = Uri::builder()
+            .scheme(self.scheme.clone())
+            .authority(self.authority.clone())
+            .path_and_query(format!("{}{}", self.version, Self::REMOUNT_ENDPOINT).as_str())
+            .build()?;
+
+        let payload = {
+            let inner = json!({
+                "from" : from,
+                "to" : to,
+            });
+            serde_json::to_string(&inner)
+        }
+        .map_err(Error::JsonError)?;
+
+        Request::builder()
+            .method(Method::POST)
+            .uri(uri)
+            .body(Body::from(payload))
+            .map_err(Error::HttpError)
+    }
 }

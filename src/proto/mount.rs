@@ -102,6 +102,7 @@ impl Default for KeyPairs {
 
 pub trait MountEndpoint {
     const MOUNT_ENDPOINT: &'static str = "/sys/mounts";
+    const REMOUNT_ENDPOINT: &'static str = "/sys/remount";
 
     // https://www.vaultproject.io/api/system/mounts.html#list-mounted-secrets-engines
     fn list_mounts(&self) -> Result<Request<Body>, Error>;
@@ -131,4 +132,7 @@ pub trait MountEndpoint {
         display: Visibility,
         whitelist: KeyPairs,
     ) -> Result<Request<Body>, Error>;
+
+    // https://www.vaultproject.io/api/system/remount.html
+    fn remount(&self, from: String, to: String) -> Result<Request<Body>, Error>;
 }

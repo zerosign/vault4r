@@ -271,6 +271,7 @@ where
     type UnmountFuture = impl TryFuture<Ok = (), Error = ClientError> + 'static;
     type ReadMountFuture = impl TryFuture<Ok = MountInfo, Error = ClientError> + 'static;
     type ModifyMountFuture = impl TryFuture<Ok = (), Error = ClientError> + 'static;
+    type RemountFuture = impl TryFuture<Ok = (), Error = ClientError> + 'static;
 
     fn mount(
         &self,
@@ -339,10 +340,19 @@ where
         )
         .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
         .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
-        .map(|r| {
-            r.and_then(move |chunks| {
-                serde_json::from_slice(&chunks.into_bytes()).map_err(ClientError::SerdeError)
-            })
-        })
+        .map(|r| r.map(|_| ()))
+    }
+
+    fn remount(&self, from: String, to: String) -> Self::RemountFuture {
+        let executor = self.inner.clone();
+
+        future::ready(
+            self.protocol
+                .remount(from, to)
+                .map_err(ClientError::ProtoError),
+        )
+        .and_then(move |r| executor.request(r).map_err(ClientError::HyperError))
+        .and_then(|r| r.into_body().try_concat().map_err(ClientError::HyperError))
+        .map(|r| r.map(|_| ()))
     }
 }

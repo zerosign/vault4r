@@ -88,6 +88,7 @@ pub trait MountService {
     type UnmountFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
     type ReadMountFuture: TryFuture<Ok = MountInfo, Error = ClientError> + 'static;
     type ModifyMountFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
+    type RemountFuture: TryFuture<Ok = (), Error = ClientError> + 'static;
 
     fn mount(
         &self,
@@ -110,4 +111,6 @@ pub trait MountService {
         display: Visibility,
         whitelist: KeyPairs,
     ) -> Self::ModifyMountFuture;
+
+    fn remount(&self, from: String, to: String) -> Self::RemountFuture;
 }

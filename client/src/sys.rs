@@ -1,28 +1,26 @@
-use crate::proto::{
-    error::Error,
-    health::HealthEndpoint,
-    lease::LeaseEndpoint,
-    mount::{KeyPairs, Mount, MountConfig, MountEndpoint, Visibility},
-    namespace::NamespaceEndpoint,
-    seal::SealEndpoint,
-};
 use http::{
     method::Method,
     uri::{Authority, Scheme, Uri},
 };
 use hyper::{Body, Request};
-// use lazy_static::lazy_static;
 use serde_json::json;
 use std::time::Duration;
+use vaultr_proto::{
+    error::Error,
+    sys::{
+        HealthEndpoint, KeyPairs, LeaseEndpoint, Mount, MountConfig, MountEndpoint,
+        NamespaceEndpoint, SealEndpoint, Visibility,
+    },
+};
 
 #[derive(Debug)]
-pub struct Protocol {
+pub struct SystemProtocol {
     version: String,
     scheme: Scheme,
     authority: Authority,
 }
 
-impl HealthEndpoint for Protocol {
+impl HealthEndpoint<Body> for SystemProtocol {
     #[inline]
     fn health(&self) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
@@ -38,10 +36,7 @@ impl HealthEndpoint for Protocol {
     }
 }
 
-impl LeaseEndpoint for Protocol {
-    //
-    //
-    //
+impl LeaseEndpoint<Body> for SystemProtocol {
     #[inline]
     fn read_lease(&self, id: &str) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
@@ -149,7 +144,7 @@ impl LeaseEndpoint for Protocol {
     }
 }
 
-impl NamespaceEndpoint for Protocol {
+impl NamespaceEndpoint<Body> for SystemProtocol {
     fn list_namespace(&self) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -213,7 +208,7 @@ impl NamespaceEndpoint for Protocol {
     }
 }
 
-impl SealEndpoint for Protocol {
+impl SealEndpoint<Body> for SystemProtocol {
     // https://www.vaultproject.io/api/system/seal.html
     fn seal(&self) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
@@ -271,7 +266,7 @@ impl SealEndpoint for Protocol {
     }
 }
 
-impl MountEndpoint for Protocol {
+impl MountEndpoint<Body> for SystemProtocol {
     // https://www.vaultproject.io/api/system/mounts.html#list-mounted-secrets-engines
     fn list_mounts(&self) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()

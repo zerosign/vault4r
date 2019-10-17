@@ -1,27 +1,2 @@
-[package]
-name = "vault4r"
-version = "0.1.0"
-authors = ["zerosign <r1nlx0@gmail.com>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-# [lib]
-# name = "vault4r"
-# crate_type = ["rlib", "staticlib"]
-
-[dependencies]
-serde_json = "1.0.40"
-serde = { version = "1.0.101", features = ["derive"] }
-# hyper-rustls = "0.17.1"
-# reqwest = { version = "0.9.20", features = [ "trust-dns", "rustls-tls" ] }
-chrono = "0.4.7"
-hyper = { version = "0.13.0-alpha.4", default-features = false, features = ["unstable-stream"] }
-# tokio = { git = "https://github.com/tokio-rs/tokio.git", features = ["net", "timer", "signal"]  }
-http = "0.1.18"
-# tokio-rustls = { git = "https://github.com/quininer/tokio-rustls.git" }
-# futures-util = "0.2.1"
-futures-preview = { version = "=0.3.0-alpha.19", default-features = false, features = ["compat"] }
-# futures-util-preview = { git = "https://github.com/rust-lang-nursery/futures-rs", default-features = false, features = ["sink"] }
-lazy_static = "1.4.0"
-derive_builder = "0.8.0"
+[workspace]
+members = ["proto", "client"]

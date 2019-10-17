@@ -1,6 +1,6 @@
 REGISTRY          ?= docker.pkg.github.com
 ORG               ?= zerosign
-PROJECT           ?= vault4r
+PROJECT           ?= vaultr
 CURRENT_DIR	      := $(shell pwd)
 GO_EXISTS         := $(shell command -v go 2> /dev/null)
 SHELLCHECK_EXISTS := $(shell command -v shellcheck 2> /dev/null)

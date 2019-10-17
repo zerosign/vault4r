@@ -1,7 +1,7 @@
-use crate::proto::error::Error;
+use crate::error::Error;
 use http::Request;
-use hyper::Body;
 use serde::Deserialize;
+use futures::TryFuture;
 
 #[derive(Debug, PartialEq, Deserialize, Default)]
 pub struct HealthInfo {
@@ -17,8 +17,21 @@ pub struct HealthInfo {
     cluster_id: String,
 }
 
-pub trait HealthEndpoint {
+pub trait HealthEndpoint<Payload> where Payload : Send + 'static {
     const HEALTH_ENDPOINT: &'static str = "/sys/health";
 
-    fn health(&self) -> Result<Request<Body>, Error>;
+    fn health(&self) -> Result<Request<Payload>, Error>;
+}
+
+pub trait HealthService {
+    type HealthError;
+
+    //
+    //
+    type HealthFuture: TryFuture<Ok = HealthInfo, Error = Self::HealthError> + 'static;
+
+    //
+    // request : GET (version)/sys/health
+    //
+    fn health(&self) -> Self::HealthFuture;
 }

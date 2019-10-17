@@ -1,5 +1,6 @@
-use crate::proto::error::Error;
-use hyper::{Body, Request};
+use crate::error::Error;
+use futures::TryFuture;
+use http::Request;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -100,12 +101,15 @@ impl Default for KeyPairs {
     }
 }
 
-pub trait MountEndpoint {
+pub trait MountEndpoint<Payload>
+where
+    Payload: Send + 'static,
+{
     const MOUNT_ENDPOINT: &'static str = "/sys/mounts";
     const REMOUNT_ENDPOINT: &'static str = "/sys/remount";
 
     // https://www.vaultproject.io/api/system/mounts.html#list-mounted-secrets-engines
-    fn list_mounts(&self) -> Result<Request<Body>, Error>;
+    fn list_mounts(&self) -> Result<Request<Payload>, Error>;
 
     // https://www.vaultproject.io/api/system/mounts.html#enable-secrets-engine
     fn mount(
@@ -115,13 +119,13 @@ pub trait MountEndpoint {
         version: Option<String>,
         config: Vec<(String, String)>,
         desc: Option<String>,
-    ) -> Result<Request<Body>, Error>;
+    ) -> Result<Request<Payload>, Error>;
 
     // https://www.vaultproject.io/api/system/mounts.html#disable-secrets-engine
-    fn unmount(&self, path: String) -> Result<Request<Body>, Error>;
+    fn unmount(&self, path: String) -> Result<Request<Payload>, Error>;
 
     // https://www.vaultproject.io/api/system/mounts.html#read-mount-configuration
-    fn read_mount(&self, path: String) -> Result<Request<Body>, Error>;
+    fn read_mount(&self, path: String) -> Result<Request<Payload>, Error>;
 
     // https://www.vaultproject.io/api/system/mounts.html#tune-mount-configuration
     fn modify_mount(
@@ -131,8 +135,42 @@ pub trait MountEndpoint {
         audit: KeyPairs,
         display: Visibility,
         whitelist: KeyPairs,
-    ) -> Result<Request<Body>, Error>;
+    ) -> Result<Request<Payload>, Error>;
 
     // https://www.vaultproject.io/api/system/remount.html
-    fn remount(&self, from: String, to: String) -> Result<Request<Body>, Error>;
+    fn remount(&self, from: String, to: String) -> Result<Request<Payload>, Error>;
+}
+
+pub trait MountService {
+    type MountError;
+
+    type MountFuture: TryFuture<Ok = Vec<MountInfo>, Error = Self::MountError> + 'static;
+    type UnmountFuture: TryFuture<Ok = (), Error = Self::MountError> + 'static;
+    type ReadMountFuture: TryFuture<Ok = MountInfo, Error = Self::MountError> + 'static;
+    type ModifyMountFuture: TryFuture<Ok = (), Error = Self::MountError> + 'static;
+    type RemountFuture: TryFuture<Ok = (), Error = Self::MountError> + 'static;
+
+    fn mount(
+        &self,
+        path: String,
+        r#type: String,
+        desc: Option<String>,
+        version: Option<String>,
+        config: Vec<(String, String)>,
+    ) -> Self::MountFuture;
+
+    fn unmount(&self, path: String) -> Self::UnmountFuture;
+
+    fn read_mount(&self, path: String) -> Self::ReadMountFuture;
+
+    fn modify_mount(
+        &self,
+        path: String,
+        lease: (usize, usize),
+        audit: KeyPairs,
+        display: Visibility,
+        whitelist: KeyPairs,
+    ) -> Self::ModifyMountFuture;
+
+    fn remount(&self, from: String, to: String) -> Self::RemountFuture;
 }

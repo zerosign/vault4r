@@ -9,6 +9,11 @@ This library also support (most) listed secret engines in vaults.
 This library heavily uses `type_alias_impl_trait` features in rust. Most of the endpoints are being implemented in
 traits.
 
+This library prone to huge changes for stabilizations, please be wary.
+
+Notes: I sometimes confuse whether I need to expose the API as per individual API service or full facade API per backend like this.
+Since some API has really huge surface definitions (`sys/*`).
+
 # Development
 
 The library are being splitted into 2 library, `proto` & `client`. Most enterprise only API are not being supported.

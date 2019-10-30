@@ -68,7 +68,7 @@ pub struct Cassandra {
     #[serde(rename(serialize = "protocol_version", deserialize = "protocol_version"))]
     version: usize,
     consistency: String,
-    #[serde(flatten)]]
+    #[serde(flatten)]
     connection: Connection,
 }
 
@@ -173,4 +173,9 @@ pub struct StaticRole {
     db: String,
     #[serde(flatten)]
     rotation: StaticRotation,
+}
+
+#![cfg(test)]
+mod tests {
+
 }

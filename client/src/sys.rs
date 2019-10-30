@@ -145,6 +145,7 @@ impl LeaseEndpoint<Body> for SystemProtocol {
 }
 
 impl NamespaceEndpoint<Body> for SystemProtocol {
+    #[inline]
     fn list_namespace(&self) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -159,6 +160,7 @@ impl NamespaceEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
+    #[inline]
     fn create_namespace(&self, path: &str) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -175,6 +177,7 @@ impl NamespaceEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
+    #[inline]
     fn delete_namespace(&self, path: &str) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -191,6 +194,7 @@ impl NamespaceEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
+    #[inline]
     fn show_namespace(&self, path: &str) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -209,7 +213,8 @@ impl NamespaceEndpoint<Body> for SystemProtocol {
 }
 
 impl SealEndpoint<Body> for SystemProtocol {
-    // https://www.vaultproject.io/api/system/seal.html
+    /// https://www.vaultproject.io/api/system/seal.html
+    #[inline]
     fn seal(&self) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -224,7 +229,8 @@ impl SealEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
-    // https://www.vaultproject.io/api/system/unseal.html
+    /// https://www.vaultproject.io/api/system/unseal.html
+    #[inline]
     fn unseal(
         &self,
         key: String,
@@ -250,7 +256,8 @@ impl SealEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
-    // https://www.vaultproject.io/api/system/seal-status.html
+    /// https://www.vaultproject.io/api/system/seal-status.html
+    #[inline]
     fn seal_info(&self) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -267,7 +274,8 @@ impl SealEndpoint<Body> for SystemProtocol {
 }
 
 impl MountEndpoint<Body> for SystemProtocol {
-    // https://www.vaultproject.io/api/system/mounts.html#list-mounted-secrets-engines
+    /// https://www.vaultproject.io/api/system/mounts.html#list-mounted-secrets-engines
+    #[inline]
     fn list_mounts(&self) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -282,7 +290,8 @@ impl MountEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
-    // https://www.vaultproject.io/api/system/mounts.html#enable-secrets-engine
+    /// https://www.vaultproject.io/api/system/mounts.html#enable-secrets-engine
+    #[inline]
     fn mount(
         &self,
         path: String,
@@ -313,7 +322,8 @@ impl MountEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
-    // https://www.vaultproject.io/api/system/mounts.html#disable-secrets-engine
+    /// https://www.vaultproject.io/api/system/mounts.html#disable-secrets-engine
+    #[inline]
     fn unmount(&self, path: String) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -328,7 +338,8 @@ impl MountEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
-    // https://www.vaultproject.io/api/system/mounts.html#read-mount-configuration
+    /// https://www.vaultproject.io/api/system/mounts.html#read-mount-configuration
+    #[inline]
     fn read_mount(&self, path: String) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())
@@ -345,7 +356,8 @@ impl MountEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
-    // https://www.vaultproject.io/api/system/mounts.html#tune-mount-configuration
+    /// https://www.vaultproject.io/api/system/mounts.html#tune-mount-configuration
+    #[inline]
     fn modify_mount(
         &self,
         path: String,
@@ -376,7 +388,8 @@ impl MountEndpoint<Body> for SystemProtocol {
             .map_err(Error::HttpError)
     }
 
-    // https://www.vaultproject.io/api/system/remount.html
+    /// https://www.vaultproject.io/api/system/remount.html
+    #[inline]
     fn remount(&self, from: String, to: String) -> Result<Request<Body>, Error> {
         let uri = Uri::builder()
             .scheme(self.scheme.clone())

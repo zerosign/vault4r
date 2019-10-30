@@ -11,6 +11,9 @@ use vaultr_proto::{
     },
 };
 
+///
+/// Entry level for Client implementation.
+///
 pub struct Client<C>
 where
     C: Connect + 'static,

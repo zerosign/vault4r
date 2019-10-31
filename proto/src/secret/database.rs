@@ -159,6 +159,10 @@ pub enum Credential {
 /// and issuing CA certificate; or just a CA certificate. For convenience format is the
 /// same as the output of the issue command from the pki secrets engine.
 ///
+/// [`elasticsearchdb`](https://www.vaultproject.io/api/secret/databases/elasticdb.html)
+/// we don't want to support `ca_path`
+/// Elasticsearch use `ca_cert`, `client_cert`, `client_key`
+///
 impl<'de> Deserialize<'de> for Credential {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

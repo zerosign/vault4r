@@ -1,10 +1,34 @@
 //!
 //! https://www.vaultproject.io/api/secret/databases/index.html
 //!
+//! https://github.com/hashicorp/vault/blob/11e0ec8bf58fcafc0dda483fe5cec5f298bcb511/sdk/helper/parseutil/parseutil.go#L32
+//! duration supported in vault : s -> seconds, m -> minutes, h -> hours, ms -> milliseconds
+//!
+//! note: on duration, we always use raw seconds when sending duration into the backend, most
+//! of the conversions happen in deserialization, thus, serializations results after deserializing might differs.
+//! since duration information are lost but the factual data remains intact.
 //!
 use crate::error::Error;
+use parse_duration::{self as duration};
 use serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
+use std::time::Duration;
+
+// fn<'de, D>(D) -> Result<T, D::Error> where D: Deserializer<'de>
+pub(crate) fn deserialize_duration<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Value::deserialize(deserializer)? {
+        Value::String(v) => duration::parse(v.as_ref())
+            .map(|d| Duration::as_secs(&d))
+            .map_err(de::Error::custom),
+        Value::Number(n) => n
+            .as_u64()
+            .ok_or_else(|| de::Error::custom("can't parse the number")),
+        other => Err(de::Error::custom(format!("unsupported format {:?}", other))),
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConnectionDetail {
@@ -223,23 +247,66 @@ impl Serialize for Credential {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Connection {
-    #[serde(rename(serialize = "connect_timeout", deserialize = "connect_timeout"))]
-    timeout: usize,
-    #[serde(rename(serialize = "socket_keep_alive", deserialize = "socket_keep_alive"))]
-    keep_alive: usize,
+    #[serde(
+        rename(serialize = "connect_timeout", deserialize = "connect_timeout"),
+        default = "Cassandra::default_timeout",
+        deserialize_with = "deserialize_duration"
+    )]
+    timeout: u64,
+    #[serde(
+        rename(serialize = "socket_keep_alive", deserialize = "socket_keep_alive"),
+        default = "Cassandra::default_keepalive",
+        deserialize_with = "deserialize_duration"
+    )]
+    keep_alive: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cassandra {
     hosts: Vec<String>,
+    #[serde(default = "Cassandra::default_port")]
     port: u32,
     #[serde(flatten)]
     credential: Credential,
-    #[serde(rename(serialize = "protocol_version", deserialize = "protocol_version"))]
+    #[serde(
+        rename(serialize = "protocol_version", deserialize = "protocol_version",),
+        default = "Cassandra::default_version"
+    )]
     version: usize,
+    #[serde(default = "Cassandra::default_consistency")]
     consistency: String,
     #[serde(flatten)]
     connection: Connection,
+}
+
+trait CassandraDefaults {
+    fn default_port() -> u32;
+    fn default_version() -> usize;
+    fn default_consistency() -> String;
+    fn default_timeout() -> u64;
+    fn default_keepalive() -> u64;
+}
+
+impl CassandraDefaults for Cassandra {
+    fn default_port() -> u32 {
+        9042
+    }
+
+    fn default_version() -> usize {
+        2
+    }
+
+    fn default_consistency() -> String {
+        String::from("")
+    }
+
+    fn default_timeout() -> u64 {
+        Duration::from_secs(5).as_secs()
+    }
+
+    fn default_keepalive() -> u64 {
+        0
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -265,7 +332,7 @@ pub struct SQL {
     #[serde(rename(serialize = "connection_url", deserialize = "connection_url"))]
     url: String,
     #[serde(flatten)]
-    connection: ConnectionDetail,
+    connection: Option<ConnectionDetail>,
     #[serde(flatten)]
     credential: BasicCredential,
 }
@@ -313,11 +380,13 @@ impl<'de> Deserialize<'de> for Backend {
             .map(Deserialize::deserialize)?
             .map_err(de::Error::custom)?;
 
-        let rotations = inner
+        let rotations: Vec<String> = match inner
             .remove("root_rotation_statements")
-            .ok_or_else(|| de::Error::missing_field("root_rotation_statements"))
-            .map(Deserialize::deserialize)?
-            .map_err(de::Error::custom)?;
+            .and_then(move |s| Deserialize::deserialize(s).ok())
+        {
+            Some(data) => data,
+            _ => Vec::with_capacity(0),
+        };
 
         let rest = Value::Object(inner);
 
@@ -444,10 +513,13 @@ mod tests {
     fn test_configure_connection_serde() {
         let payloads = vec![
             r#"{"plugin_name": "mysql-database-plugin", "allowed_roles": ["readonly"], "connection_url": "{{username}}:{{password}}@tcp(127.0.0.1:3306)/", "max_open_connections": 5, "max_connection_lifetime": "5s", "username": "root", "password": "mysql"}"#,
+            r#"{"plugin_name": "cassandra-database-plugin","allowed_roles": ["readonly"],"hosts": ["cassandra1.local"],"username": "user","password": "pass"}"#,
         ];
 
-        let result = serde_json::from_str::<Backend>(payloads[0]);
-        println!("result: {:?}", result);
-        assert!(result.is_ok());
+        for payload in payloads {
+            let result = serde_json::from_str::<Backend>(payload);
+            println!("result: {:?}", result);
+            assert!(result.is_ok());
+        }
     }
 }

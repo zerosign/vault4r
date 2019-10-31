@@ -168,7 +168,7 @@ impl<'de> Deserialize<'de> for Credential {
                             .map_err(|_| de::Error::custom("can't parse json from `pem_json`"))
                     });
 
-                let bundle: Result<Self, D::Error> = match (pem_bundle, pem_json) {
+                match (pem_bundle, pem_json) {
                     (Ok(v), _) => {
                         if v.len() == 1 {
                             // ca certificate only
@@ -180,6 +180,7 @@ impl<'de> Deserialize<'de> for Credential {
                                 private_key: v[1].clone(),
                             }))
                         } else if v.len() == 3 {
+                            // certificate + private key + ca
                             Ok(Credential::BundledCert(BundledCert::FullBundle {
                                 certificate: v[0].clone(),
                                 private_key: v[1].clone(),
@@ -199,9 +200,7 @@ impl<'de> Deserialize<'de> for Credential {
                         .map_err(de::Error::custom),
                     (Err(e), _) => Err(e),
                     (_, Err(e)) => Err(e),
-                };
-
-                bundle
+                }
             }
             // Ok(false) | Err(_)
             // `Credential::Basic`
@@ -305,9 +304,8 @@ impl<'de> Deserialize<'de> for Backend {
 
         let plugin_name = inner
             .remove("plugin_name")
-            .ok_or_else(|| de::Error::missing_field("plugin_name"))
-            .map(Deserialize::deserialize)?
-            .map_err(de::Error::custom)?;
+            .and_then(|s| s.as_str().map(String::from))
+            .ok_or_else(|| de::Error::missing_field("plugin_name"))?;
 
         let roles = inner
             .remove("allowed_roles")
@@ -333,7 +331,7 @@ impl<'de> Deserialize<'de> for Backend {
         // elasticsearch-database-plugin
         // cassandra-database-plugin
         //
-        match plugin_name {
+        match plugin_name.as_ref() {
             "mysql-database-plugin"
             | "postgresql-database-plugin"
             | "oracle-database-plugin"
@@ -445,7 +443,7 @@ mod tests {
     #[test]
     fn test_configure_connection_serde() {
         let payloads = vec![
-            r#"{"plugin_name": "mysql-database-plugin", "allowed_roles": "readonly", "connection_url": "{{username}}:{{password}}@tcp(127.0.0.1:3306)/", "max_open_connections": 5, "max_connection_lifetime": "5s", "username": "root", "password": "mysql"}"#,
+            r#"{"plugin_name": "mysql-database-plugin", "allowed_roles": ["readonly"], "connection_url": "{{username}}:{{password}}@tcp(127.0.0.1:3306)/", "max_open_connections": 5, "max_connection_lifetime": "5s", "username": "root", "password": "mysql"}"#,
         ];
 
         let result = serde_json::from_str::<Backend>(payloads[0]);

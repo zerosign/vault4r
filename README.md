@@ -56,6 +56,12 @@ Implemented secret engines :
 - [ ] Transit
 - [ ] RabbitMQ
 
+# NOTES
+
+- We don't do auto coercion singular value to sequences, when the API said that it can accept list or array, we
+  use array even that Vault API (hiddenly doing auto coercion in their backend) supports both singular and sequence values.
+  ex: [auto coercion example payload](https://www.vaultproject.io/api/secret/databases/index.html#sample-payload)
+
 # TODO
 
 - [ ] Auto test with most recent tagged branch of `vault`

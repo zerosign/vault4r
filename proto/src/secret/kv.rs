@@ -8,7 +8,7 @@ pub struct Value<T> {
     auth: Option<&str>,
     data: T,
     lease: (usize, &str),
-    renewable: bool,>
+    renewable: bool,
 }
 
 ///
@@ -41,7 +41,9 @@ where
 }
 
 pub trait KeyValueConfig<Payload>
-where Payload: Send + 'static {
+where
+    Payload: Send + 'static,
+{
     fn config_kv(&self, path: &str) -> Result<Request<Payload>, Error>;
     fn modify_kv_config(&self, path: &str) -> Result<Request<Payload>, Error>;
 }

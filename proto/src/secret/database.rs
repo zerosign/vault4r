@@ -3,7 +3,7 @@
 //!
 //!
 use crate::error::Error;
-use serde::{de, ser, Deserialize, Deserializer, Serialize};
+use serde::{de, ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -50,42 +50,66 @@ pub enum BundledCert {
         certificate: String,
         private_key: String,
         issuing_ca: String,
-    }
+    },
 }
 
-impl <'de> Deserialize<'de> for BundledCert {
+impl<'de> Deserialize<'de> for BundledCert {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         let mut inner = Map::deserialize(deserializer)?;
 
-        let issuing_ca = inner.remove("issuing_ca")
-            .ok_or_else(|| de::Error::missing_field("issuing_ca"))
-            .and_then(Deserialize::deserialize);
+        let issuing_ca: Result<&str, D::Error> = inner
+            .remove("issuing_ca")
+            .and_then(|s| s.as_str())
+            .ok_or_else(|| de::Error::missing_field("issuing_ca"));
 
-        let certificate = inner.remove("certificate")
-            .ok_or_else(|| de::Error::missing_field("certificate"))
-            .and_then(Deserialize::deserialize);
+        let certificate: Result<&str, D::Error> = inner
+            .remove("certificate")
+            .and_then(|s| s.as_str())
+            .ok_or_else(|| de::Error::missing_field("certificate"));
 
-        let private_key = inner.remove("private_key")
-            .ok_or_else(|| de::Error::missing_field("private_key"))
-            .and_then(Deserialize::deserialize);
+        let private_key: Result<&str, D::Error> = inner
+            .remove("private_key")
+            .and_then(|s| s.as_str())
+            .ok_or_else(|| de::Error::missing_field("private_key"));
 
         match (issuing_ca, certificate, private_key) {
-            (Ok(ca), Err(_), Err(_)) => Ok(BundledCert::CAOnly(ca)),
-            (Err(_), Ok(cert), Ok(key)) => Ok(BundledCert::SimpleBundle(cert, key)),
-            (Ok(ca), Ok(cert), Ok(key)) => Ok(BundledCert::FullBundle(cert, key, ca)),
-            _ => Err(de::Error::custom("unsupported combinations, should be either CAOnly, SimpleBundle or FullBundle")),
+            (Ok(ca), Err(_), Err(_)) => Ok(BundledCert::CAOnly(String::from(ca))),
+            (Err(_), Ok(cert), Ok(key)) => Ok(BundledCert::SimpleBundle {
+                certificate: String::from(cert),
+                private_key: String::from(key),
+            }),
+            (Ok(ca), Ok(cert), Ok(key)) => Ok(BundledCert::FullBundle {
+                certificate: String::from(cert),
+                private_key: String::from(key),
+                issuing_ca: String::from(ca),
+            }),
+            _ => Err(de::Error::custom(
+                "unsupported combinations, should be either CAOnly, SimpleBundle or FullBundle",
+            )),
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+impl Serialize for BundledCert {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        Err(ser::Error::custom("unimplemented"))
+    }
+}
+
+#[derive(Debug)]
 pub enum Credential {
     Basic(BasicCredential),
     BundledCert(BundledCert),
 }
 
+/// Credential Deserialize.
+///
 /// ignore any options related to `insecure_tls`
 /// we don't need any `insecure_tls` because it's stupid
 ///
@@ -117,55 +141,75 @@ impl<'de> Deserialize<'de> for Credential {
     {
         let mut inner = Map::deserialize(deserializer)?;
 
-        inner.remove("tls")
+        match inner
+            .remove("tls")
             .ok_or_else(|| de::Error::missing_field("tls"))
-            .and_then(Deserialize::deserialize) match {
-                Ok(true) => {
-                    // fetch `pem_bundle`
-                    // cert -> private_key ->
-                    let pem_bundle = inner.remove("pem_bundle")
-                        .ok_or_else(|| de::Error::missing_field("pem_bundle"))
-                        .and_then(Deserialize::deserialize)
-                        .map(move|s|s.split('\n').collect::<Vec<&str>>());
+            .and_then(Deserialize::deserialize)
+        {
+            Ok(true) => {
+                // fetch `pem_bundle`
+                // cert -> private_key ->
+                let pem_bundle: Result<Vec<&str>, D::Error> = inner
+                    .remove("pem_bundle")
+                    .and_then(move |s| s.as_str())
+                    .ok_or_else(|| de::Error::missing_field("pem_bundle"))
+                    .map(move |s: &str| s.split('\n').collect::<Vec<&str>>());
 
-                    // fetch `pem_json`
-                    let pem_json = inner.remove("pem_json")
-                        .ok_or_else(|| de::Error::missing_field("pem_json"))
-                        // un-qouting json
-                        .map(|s| format!("{}", s))
-                        .and_then(Deserialize::deserialize);
+                // fetch `pem_json`
+                let pem_json: Result<Value, D::Error> = inner
+                    .remove("pem_json")
+                    .and_then(move |s| s.as_str())
+                    .ok_or_else(|| de::Error::missing_field("pem_json"))
+                    // un-qouting json
+                    .map(|s| format!("{}", s))
+                    .and_then(move |s| {
+                        serde_json::from_str::<Value>(&s)
+                            .map_err(|_| de::Error::custom("can't parse json from `pem_json`"))
+                    });
 
-                    let bundle = match (pem_bundle, pem_json) {
-                        (Ok(v), Err(_)) => {
-                            if v.len() == 1 {
-                                // ca certificate only
-                                Ok(BundledCert::CAOnly(v[0]))
-                            } else if v.len() == 2 {
-                                // certificate + private key
-                                Ok(BundledCert::SimpleBundle(v[0], v[1]))
-                            } else if v.len() == 3 {
-                                Ok(BundledCert::FullBundle(v[0], v[1], v[2]))
-                            } else if v.is_empty() {
-                                Err(de::Error::custom("certificate bundled shouldn't be empty"))
-                            } else {
-                                Err(de::Error::custom(
-                                    format!("invalid length of `pem_bundle`, expected 1 to 3, got {}", v.len())
-                                ))
-                            }
-                        },
-                        (Err(_), Ok(v)) => BundledCert::deserialize(v),
-                        (Err(e), _) => Err(e),
-                        (_, Err(e)) => Err(e),
-                    };
-                },
-                // Ok(false) | Err(_)
-                // `Credential::Basic`
-                _ => {
-                    BasicCredential::deserialize(Value::Object(inner)).map(Credential::Basic)
-                },
+                let bundle: Result<Self, D::Error> = match (pem_bundle, pem_json) {
+                    (Ok(v), Err(_)) => {
+                        if v.len() == 1 {
+                            // ca certificate only
+                            Ok(Credential::BundledCert(BundledCert::CAOnly(String::from(
+                                v[0],
+                            ))))
+                        } else if v.len() == 2 {
+                            // certificate + private key
+                            Ok(Credential::BundledCert(BundledCert::SimpleBundle {
+                                certificate: String::from(v[0]),
+                                private_key: String::from(v[1]),
+                            }))
+                        } else if v.len() == 3 {
+                            Ok(Credential::BundledCert(BundledCert::FullBundle {
+                                certificate: String::from(v[0]),
+                                private_key: String::from(v[1]),
+                                issuing_ca: String::from(v[2]),
+                            }))
+                        } else if v.is_empty() {
+                            Err(de::Error::custom("certificate bundled shouldn't be empty"))
+                        } else {
+                            Err(de::Error::custom(format!(
+                                "invalid length of `pem_bundle`, expected 1 to 3, got {}",
+                                v.len()
+                            )))
+                        }
+                    }
+                    (Err(_), Ok(v)) => BundledCert::deserialize(v)
+                        .map(Credential::BundledCert)
+                        .map_err(de::Error::custom),
+                    (Err(e), _) => Err(e),
+                    (_, Err(e)) => Err(e),
+                };
+
+                bundle
             }
-
-        Err(de::Error::custom("unimplemented!()"))
+            // Ok(false) | Err(_)
+            // `Credential::Basic`
+            _ => BasicCredential::deserialize(Value::Object(inner))
+                .map(Credential::Basic)
+                .map_err(de::Error::custom),
+        }
     }
 }
 

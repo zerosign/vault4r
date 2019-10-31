@@ -60,31 +60,31 @@ impl<'de> Deserialize<'de> for BundledCert {
     {
         let mut inner = Map::deserialize(deserializer)?;
 
-        let issuing_ca: Result<&str, D::Error> = inner
+        let issuing_ca: Result<String, D::Error> = inner
             .remove("issuing_ca")
-            .and_then(|s| s.as_str())
+            .and_then(|s| s.as_str().map(String::from))
             .ok_or_else(|| de::Error::missing_field("issuing_ca"));
 
-        let certificate: Result<&str, D::Error> = inner
+        let certificate: Result<String, D::Error> = inner
             .remove("certificate")
-            .and_then(|s| s.as_str())
+            .and_then(|s| s.as_str().map(String::from))
             .ok_or_else(|| de::Error::missing_field("certificate"));
 
-        let private_key: Result<&str, D::Error> = inner
+        let private_key: Result<String, D::Error> = inner
             .remove("private_key")
-            .and_then(|s| s.as_str())
+            .and_then(|s| s.as_str().map(String::from))
             .ok_or_else(|| de::Error::missing_field("private_key"));
 
         match (issuing_ca, certificate, private_key) {
-            (Ok(ca), Err(_), Err(_)) => Ok(BundledCert::CAOnly(String::from(ca))),
+            (Ok(ca), Err(_), Err(_)) => Ok(BundledCert::CAOnly(ca)),
             (Err(_), Ok(cert), Ok(key)) => Ok(BundledCert::SimpleBundle {
-                certificate: String::from(cert),
-                private_key: String::from(key),
+                certificate: cert,
+                private_key: key,
             }),
             (Ok(ca), Ok(cert), Ok(key)) => Ok(BundledCert::FullBundle {
-                certificate: String::from(cert),
-                private_key: String::from(key),
-                issuing_ca: String::from(ca),
+                certificate: cert,
+                private_key: key,
+                issuing_ca: ca,
             }),
             _ => Err(de::Error::custom(
                 "unsupported combinations, should be either CAOnly, SimpleBundle or FullBundle",
@@ -98,6 +98,7 @@ impl Serialize for BundledCert {
     where
         S: Serializer,
     {
+        // TODO: @zerosign
         Err(ser::Error::custom("unimplemented"))
     }
 }
@@ -149,16 +150,16 @@ impl<'de> Deserialize<'de> for Credential {
             Ok(true) => {
                 // fetch `pem_bundle`
                 // cert -> private_key ->
-                let pem_bundle: Result<Vec<&str>, D::Error> = inner
+                let pem_bundle: Result<Vec<String>, D::Error> = inner
                     .remove("pem_bundle")
-                    .and_then(move |s| s.as_str())
+                    .and_then(move |s| s.as_str().map(String::from))
                     .ok_or_else(|| de::Error::missing_field("pem_bundle"))
-                    .map(move |s: &str| s.split('\n').collect::<Vec<&str>>());
+                    .map(move |s: String| s.split('\n').map(String::from).collect::<Vec<String>>());
 
                 // fetch `pem_json`
                 let pem_json: Result<Value, D::Error> = inner
                     .remove("pem_json")
-                    .and_then(move |s| s.as_str())
+                    .and_then(move |s| s.as_str().map(String::from))
                     .ok_or_else(|| de::Error::missing_field("pem_json"))
                     // un-qouting json
                     .map(|s| format!("{}", s))
@@ -168,23 +169,21 @@ impl<'de> Deserialize<'de> for Credential {
                     });
 
                 let bundle: Result<Self, D::Error> = match (pem_bundle, pem_json) {
-                    (Ok(v), Err(_)) => {
+                    (Ok(v), _) => {
                         if v.len() == 1 {
                             // ca certificate only
-                            Ok(Credential::BundledCert(BundledCert::CAOnly(String::from(
-                                v[0],
-                            ))))
+                            Ok(Credential::BundledCert(BundledCert::CAOnly(v[0].clone())))
                         } else if v.len() == 2 {
                             // certificate + private key
                             Ok(Credential::BundledCert(BundledCert::SimpleBundle {
-                                certificate: String::from(v[0]),
-                                private_key: String::from(v[1]),
+                                certificate: v[0].clone(),
+                                private_key: v[1].clone(),
                             }))
                         } else if v.len() == 3 {
                             Ok(Credential::BundledCert(BundledCert::FullBundle {
-                                certificate: String::from(v[0]),
-                                private_key: String::from(v[1]),
-                                issuing_ca: String::from(v[2]),
+                                certificate: v[0].clone(),
+                                private_key: v[1].clone(),
+                                issuing_ca: v[2].clone(),
                             }))
                         } else if v.is_empty() {
                             Err(de::Error::custom("certificate bundled shouldn't be empty"))
@@ -210,6 +209,16 @@ impl<'de> Deserialize<'de> for Credential {
                 .map(Credential::Basic)
                 .map_err(de::Error::custom),
         }
+    }
+}
+
+impl Serialize for Credential {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // TODO: @zerosign
+        Err(ser::Error::custom("unimplemented"))
     }
 }
 
@@ -312,7 +321,7 @@ impl<'de> Deserialize<'de> for Backend {
             .map(Deserialize::deserialize)?
             .map_err(de::Error::custom)?;
 
-        let mut rest = Value::Object(inner);
+        let rest = Value::Object(inner);
 
         //
         // mysql-database-plugin

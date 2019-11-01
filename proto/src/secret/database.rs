@@ -326,9 +326,20 @@ pub struct ElasticSearch {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Influx {
     host: String,
+    #[serde(default = "Influx::default_port")]
     port: u32,
     #[serde(flatten)]
     credential: Credential,
+}
+
+trait InfluxDefaults {
+    fn default_port() -> u32;
+}
+
+impl InfluxDefaults for Influx {
+    fn default_port() -> u32 {
+        8086
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -361,6 +372,7 @@ pub enum Database {
 
 #[derive(Debug, Serialize)]
 pub struct Backend {
+    plugin_name: String,
     roles: Vec<String>,
     rotations: Vec<String>,
     backend: Database,
@@ -409,11 +421,13 @@ impl<'de> Deserialize<'de> for Backend {
             | "postgresql-database-plugin"
             | "oracle-database-plugin"
             | "mssql-database-plugin" => Ok(Backend {
+                plugin_name: plugin_name,
                 roles: roles,
                 rotations: rotations,
                 backend: Database::SQL(SQL::deserialize(rest).map_err(de::Error::custom)?),
             }),
             "cassandra-database-plugin" => Ok(Backend {
+                plugin_name: plugin_name,
                 roles: roles,
                 rotations: rotations,
                 backend: Database::Cassandra(
@@ -421,6 +435,7 @@ impl<'de> Deserialize<'de> for Backend {
                 ),
             }),
             "elasticsearch-database-plugin" => Ok(Backend {
+                plugin_name: plugin_name,
                 roles: roles,
                 rotations: rotations,
                 backend: Database::ElasticSearch(
@@ -428,11 +443,13 @@ impl<'de> Deserialize<'de> for Backend {
                 ),
             }),
             "influxdb-database-plugin" => Ok(Backend {
+                plugin_name: plugin_name,
                 roles: roles,
                 rotations: rotations,
                 backend: Database::Influx(Influx::deserialize(rest).map_err(de::Error::custom)?),
             }),
             "mongodb-database-plugin" => Ok(Backend {
+                plugin_name: plugin_name,
                 roles: roles,
                 rotations: rotations,
                 backend: Database::MongoDB(MongoDB::deserialize(rest).map_err(de::Error::custom)?),
@@ -478,13 +495,20 @@ pub struct RoleStatement {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct Ttl {
+    #[serde(rename(serialize = "default_ttl", deserialize = "default_ttl"))]
+    default: u64,
+    #[serde(rename(serialize = "max_ttl", deserialize = "max_ttl"))]
+    max: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Role {
     name: String,
     #[serde(rename(serialize = "db_name", deserialize = "db_name"))]
     db: String,
-    // TODO: @zerosign, implement this (default_ttl, max_ttl)
-    // #[serde(with = "ttl")]
-    ttl: (u64, u64),
+    #[serde(flatten)]
+    ttl: Ttl,
     #[serde(flatten)]
     statements: RoleStatement,
 }
@@ -518,6 +542,11 @@ mod tests {
         let payloads = vec![
             r#"{"plugin_name": "mysql-database-plugin", "allowed_roles": ["readonly"], "connection_url": "{{username}}:{{password}}@tcp(127.0.0.1:3306)/", "max_open_connections": 5, "max_connection_lifetime": "5s", "username": "root", "password": "mysql"}"#,
             r#"{"plugin_name": "cassandra-database-plugin","allowed_roles": ["readonly"],"hosts": ["cassandra1.local"],"username": "user","password": "pass"}"#,
+            r#"{"plugin_name": "influxdb-database-plugin", "allowed_roles": ["readonly"], "host": "influxdb1.local", "username": "user", "password": "pass"}"#,
+            r#"{"plugin_name": "mongodb-database-plugin", "allowed_roles": ["readonly"], "connection_url": "mongodb://{{username}}:{{password}}@mongodb.acme.com:27017/admin?ssl=true", "write_concern": "{ \"wmode\": \"majority\", \"wtimeout\": 5000 }", "username": "admin", "password": "Password!"}"#,
+            r#"{"plugin_name": "mssql-database-plugin", "allowed_roles": ["readonly"], "connection_url": "sqlserver://{{username}}:{{password}}@localhost:1433", "max_open_connections": 5, "max_connection_lifetime": "5s", "username": "sa", "password": "yourStrong(!)Password"}"#,
+            r#"{"plugin_name": "mysql-database-plugin", "allowed_roles": ["readonly"], "connection_url": "{{username}}:{{password}}@tcp(127.0.0.1:3306)/", "max_open_connections": 5, "max_connection_lifetime": "5s", "username": "root", "password": "mysql"}"#,
+            r#"{"plugin_name": "postgresql-database-plugin", "allowed_roles": ["readonly"], "connection_url": "postgresql://{{username}}:{{password}}@localhost:5432/postgres", "max_open_connections": 5, "max_connection_lifetime": "5s", "username": "username", "password": "password"}"#,
         ];
 
         for payload in payloads {

@@ -38,12 +38,11 @@ Implemented system backend endpoints :
 Implemented secret engines :
 
 - [ ] Cubbyhole
-- [ ] Databases
-  - [ ] Cassandra
-  - [ ] Elasticsearch
-  - [ ] MongoDB
-  - [ ] MySQL/MariaDB
-  - [ ] PostgreSQL
+- [x] Databases
+  - [x] Cassandra
+  - [ ] Elasticsearch (unsupported now)
+  - [x] MongoDB
+  - [x] Any primitive SQL database, except Oracle
 - [ ] Google Cloud
 - [ ] Google Cloud KMS
 - [ ] AWS
@@ -61,6 +60,8 @@ Implemented secret engines :
 - We don't do auto coercion singular value to sequences, when the API said that it can accept list or array, we
   use array even that Vault API (hiddenly doing auto coercion in their backend) supports both singular and sequence values.
   ex: [auto coercion example payload](https://www.vaultproject.io/api/secret/databases/index.html#sample-payload)
+
+- We don't support elasticsearch just because its fields `serde` has the same requirements but different fields than other.
 
 # TODO
 
